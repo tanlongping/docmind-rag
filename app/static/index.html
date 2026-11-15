@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DocMind · 知识库问答</title>
+<style>
+  :root { --bg:#0f1115; --panel:#171a21; --line:#262b36; --text:#e6e8ee; --muted:#8b93a7; --brand:#5b8cff; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); }
+  header { display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:16px; margin:0; font-weight:600; }
+  header span { color:var(--muted); font-size:12px; }
+  main { display:grid; grid-template-columns:300px 1fr; height:calc(100vh - 57px); }
+  aside { border-right:1px solid var(--line); padding:16px; overflow:auto; }
+  section { display:flex; flex-direction:column; min-height:0; }
+  .row { display:flex; gap:8px; }
+  input, select, button, textarea { font:inherit; color:inherit; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+  button { cursor:pointer; }
+  button.primary { background:var(--brand); border-color:var(--brand); color:#fff; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  h2 { font-size:13px; color:var(--muted); margin:18px 0 8px; text-transform:uppercase; letter-spacing:.06em; }
+  #log { flex:1; overflow:auto; padding:20px; display:flex; flex-direction:column; gap:14px; }
+  .msg { max-width:76ch; white-space:pre-wrap; }
+  .msg.user { align-self:flex-end; background:#1f2937; padding:10px 14px; border-radius:12px 12px 4px 12px; }
+  .msg.bot { background:var(--panel); border:1px solid var(--line); padding:12px 14px; border-radius:12px 12px 12px 4px; }
+  .cite { margin-top:8px; font-size:12px; color:var(--muted); border-top:1px dashed var(--line); padding-top:8px; }
+  .cite b { color:var(--brand); }
+  footer { border-top:1px solid var(--line); padding:12px 20px; display:flex; gap:10px; }
+  footer input { flex:1; }
+  .hint { color:var(--muted); font-size:12px; margin-top:6px; }
+  .file { display:flex; justify-content:space-between; font-size:12px; padding:6px 0; border-bottom:1px solid var(--line); color:var(--muted); }
+  #status { font-size:12px; color:var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>DocMind</h1>
+  <span>多租户知识库问答 · 混合检索 · 引用溯源</span>
+  <span id="status" style="margin-left:auto"></span>
+</header>
+
+<main>
+  <aside>
+    <h2>账号</h2>
+    <div class="row"><input id="email" placeholder="邮箱" value="demo@docmind.dev" /></div>
+    <div class="row" style="margin-top:8px"><input id="password" type="password" placeholder="密码" value="Demo12345!" /></div>
+    <div class="row" style="margin-top:8px">
+      <button id="login" class="primary" style="flex:1">登录</button>
+      <button id="register" style="flex:1">注册</button>
+    </div>
+
+    <h2>知识库</h2>
+    <div class="row"><input id="kbName" placeholder="新知识库名称" /></div>
+    <div class="row" style="margin-top:8px"><button id="createKb" style="flex:1">创建</button></div>
+    <div style="margin-top:8px"><select id="kbList" style="width:100%"></select></div>
+
+    <h2>上传文档</h2>
+    <input id="file" type="file" accept=".txt,.md,.pdf" style="width:100%" />
+    <div class="row" style="margin-top:8px"><button id="upload" class="primary" style="flex:1">入库</button></div>
+    <div id="docs" style="margin-top:10px"></div>
+  </aside>
+
+  <section>
+    <div id="log">
+      <div class="msg bot">你好，我是基于知识库回答的助手。先在左侧登录并上传文档，然后提问，例如「退款多久到账」。</div>
+    </div>
+    <footer>
+      <input id="question" placeholder="输入问题，回车发送" />
+      <button id="send" class="primary">发送</button>
+    </footer>
+  </section>
+</main>
+
+<script>
+const state = { token: localStorage.getItem("dm_token") || "", kbId: null };
+const $ = (id) => document.getElementById(id);
+
+function setStatus(text) { $("status").textContent = text; }
+function headers() { return { "Content-Type": "application/json", Authorization: `Bearer ${state.token}` }; }
+
+function bubble(role, text) {
+  const div = document.createElement("div");
+  div.className = `msg ${role}`;
+  div.textContent = text;
+  $("log").appendChild(div);
+  $("log").scrollTop = $("log").scrollHeight;
+  return div;
+}
+
+async function api(path, options = {}) {
+  const response = await fetch(path, options);
+  if (!response.ok) throw new Error((await response.text()).slice(0, 200));
+  return response.status === 204 ? null : response.json();
+}
+
+async function auth(kind) {
+  const body = { email: $("email").value, password: $("password").value, display_name: "Demo" };
+  const path = kind === "login" ? "/api/v1/auth/login" : "/api/v1/auth/register";
+  const data = await api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  state.token = data.access_token;
+  localStorage.setItem("dm_token", state.token);
+  setStatus(`已登录 ${data.user.email}`);
+  await loadKbs();
+}
+
+async function loadKbs() {
+  const kbs = await api("/api/v1/kbs", { headers: headers() });
+  $("kbList").innerHTML = kbs.map((kb) => `<option value="${kb.id}">${kb.name}（${kb.document_count} 篇）</option>`).join("");
+  if (kbs.length) { state.kbId = kbs[0].id; await loadDocs(); }
+}
+
+async function loadDocs() {
+  if (!state.kbId) return;
+  const docs = await api(`/api/v1/kbs/${state.kbId}/documents`, { headers: headers() });
+  $("docs").innerHTML = docs.map((d) => `<div class="file"><span>${d.filename}</span><span>${d.chunk_count} 片</span></div>`).join("");
+}
+
+async function createKb() {
+  await api("/api/v1/kbs", { method: "POST", headers: headers(), body: JSON.stringify({ name: $("kbName").value || "默认知识库" }) });
+  await loadKbs();
+}
+
+async function upload() {
+  if (!state.kbId || !$("file").files.length) return;
+  const form = new FormData();
+  form.append("file", $("file").files[0]);
+  await api(`/api/v1/kbs/${state.kbId}/documents`, { method: "POST", headers: { Authorization: `Bearer ${state.token}` }, body: form });
+  await loadDocs();
+  await loadKbs();
+}
+
+async function ask() {
+  const question = $("question").value.trim();
+  if (!question || !state.kbId) return;
+  $("question").value = "";
+  bubble("user", question);
+  const bubbleEl = bubble("bot", "");
+  $("send").disabled = true;
+
+  const response = await fetch(`/api/v1/kbs/${state.kbId}/chat`, {
+    method: "POST",
+    headers: headers(),
+    body: JSON.stringify({ question }),
+  });
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let answer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const blocks = buffer.split("\n\n");
+    buffer = blocks.pop();
+    for (const block of blocks) {
+      const event = (block.match(/^event: (.+)$/m) || [])[1];
+      const data = (block.match(/^data: (.+)$/m) || [])[1];
+      if (!event || !data) continue;
+      const payload = JSON.parse(data);
+      if (event === "token") { answer += payload.text; bubbleEl.textContent = answer; }
+      if (event === "meta" && payload.citations?.length) {
+        const cite = document.createElement("div");
+        cite.className = "cite";
+        cite.innerHTML = payload.citations.map((c) => `<div><b>[${c.index}]</b> ${c.filename} · 第 ${c.chunk_ordinal + 1} 段 — ${c.snippet}</div>`).join("");
+        bubbleEl.appendChild(cite);
+      }
+      $("log").scrollTop = $("log").scrollHeight;
+    }
+  }
+  $("send").disabled = false;
+}
+
+$("login").onclick = () => auth("login").catch((e) => setStatus(e.message));
+$("register").onclick = () => auth("register").catch((e) => setStatus(e.message));
+$("createKb").onclick = () => createKb().catch((e) => setStatus(e.message));
+$("upload").onclick = () => upload().catch((e) => setStatus(e.message));
+$("send").onclick = () => ask().catch((e) => setStatus(e.message));
+$("question").addEventListener("keydown", (e) => { if (e.key === "Enter") ask(); });
+$("kbList").onchange = (e) => { state.kbId = Number(e.target.value); loadDocs(); };
+
+if (state.token) { setStatus("使用已保存的登录态"); loadKbs().catch(() => localStorage.removeItem("dm_token")); }
+</script>
+</body>
+</html>
