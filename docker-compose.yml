@@ -1,0 +1,43 @@
+services:
+  api:
+    build: .
+    image: docmind-api:1.0.0
+    ports:
+      - "8000:8000"
+    environment:
+      DOCMIND_ENV: production
+      DOCMIND_DATABASE_URL: sqlite:////data/docmind.db
+      DOCMIND_JWT_SECRET: ${DOCMIND_JWT_SECRET:-please-change-this-in-production-32b}
+      DOCMIND_LLM_PROVIDER: ${DOCMIND_LLM_PROVIDER:-demo}
+      DOCMIND_LLM_API_KEY: ${DOCMIND_LLM_API_KEY:-}
+      DOCMIND_LLM_BASE_URL: ${DOCMIND_LLM_BASE_URL:-https://api.deepseek.com/v1}
+      DOCMIND_LLM_MODEL: ${DOCMIND_LLM_MODEL:-deepseek-chat}
+    volumes:
+      - docmind-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz').status==200 else 1)"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # 需要 PostgreSQL 时：docker compose --profile postgres up
+  postgres:
+    profiles: ["postgres"]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: docmind
+      POSTGRES_PASSWORD: docmind
+      POSTGRES_DB: docmind
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docmind"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  docmind-data:
+  pg-data:
