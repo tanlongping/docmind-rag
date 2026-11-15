@@ -1,0 +1,16 @@
+{"query": "七天无理由退款的条件是什么", "expected_doc": "refund-policy.md"}
+{"query": "退款多久到账", "expected_doc": "refund-policy.md"}
+{"query": "商品质量问题怎么换货", "expected_doc": "refund-policy.md"}
+{"query": "客服几点上班", "expected_doc": "refund-policy.md"}
+{"query": "专用发票需要提供哪些资料", "expected_doc": "invoice-guide.md"}
+{"query": "发票抬头可以改吗", "expected_doc": "invoice-guide.md"}
+{"query": "报销需要哪些材料", "expected_doc": "invoice-guide.md"}
+{"query": "发票金额和实付不一致", "expected_doc": "invoice-guide.md"}
+{"query": "access_token 有效期多久", "expected_doc": "api-auth.md"}
+{"query": "接口返回 429 是什么原因", "expected_doc": "api-auth.md"}
+{"query": "签名校验失败的错误码", "expected_doc": "api-auth.md"}
+{"query": "下单接口如何保证幂等", "expected_doc": "api-auth.md"}
+{"query": "新疆发货要几天", "expected_doc": "delivery.md"}
+{"query": "满多少包邮", "expected_doc": "delivery.md"}
+{"query": "可以修改收货地址吗", "expected_doc": "delivery.md"}
+{"query": "支持哪些快递公司", "expected_doc": "delivery.md"}

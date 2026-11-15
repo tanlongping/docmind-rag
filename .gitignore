@@ -11,8 +11,10 @@ env/
 
 # ---- 运行时数据 ----
 *.db
+*.db-shm
+*.db-wal
 *.sqlite3
-data/
+data/uploads/
 uploads/
 logs/
 
