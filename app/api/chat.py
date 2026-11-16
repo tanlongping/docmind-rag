@@ -30,7 +30,7 @@ from app.deps import (
     get_registry,
     get_settings,
 )
-from app.errors import NotFound, Unauthorized
+from app.errors import NotFound
 from app.metrics import Metrics
 from app.models import ChatSession, Message
 from app.rag.embeddings import Embedder

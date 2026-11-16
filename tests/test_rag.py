@@ -22,7 +22,7 @@ def make_records() -> list[ChunkRecord]:
     vectors = embedder.embed(texts)
     return [
         ChunkRecord(chunk_id=i, doc_id=i, filename=f"doc{i}.txt", ordinal=0, text=text, vector=vector)
-        for i, (text, vector) in zip(DOCS, zip(texts, vectors))
+        for i, (text, vector) in zip(DOCS, zip(texts, vectors, strict=True), strict=True)
     ]
 
 

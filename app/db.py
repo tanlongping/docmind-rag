@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import DateTime, Engine, create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
@@ -16,7 +16,7 @@ from sqlalchemy.pool import StaticPool
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class Base(DeclarativeBase):
@@ -30,13 +30,13 @@ class UTCDateTime(DateTime):
         if value is None:
             return None
         if value.tzinfo is not None:
-            value = value.astimezone(timezone.utc).replace(tzinfo=None)
+            value = value.astimezone(UTC).replace(tzinfo=None)
         return value
 
     def process_result_value(self, value, dialect):  # noqa: D102
         if value is None:
             return None
-        return value.replace(tzinfo=timezone.utc)
+        return value.replace(tzinfo=UTC)
 
 
 def build_engine(database_url: str, *, echo: bool = False) -> Engine:

@@ -43,7 +43,7 @@ def build_index(dim: int, chunk_size: int, overlap: int, vector_weight: float):
             chunk_id += 1
 
     vectors = embedder.embed([record.text for record in records])
-    for record, vector in zip(records, vectors):
+    for record, vector in zip(records, vectors, strict=True):
         record.vector = vector
     return HybridRetriever(records, vector_weight=vector_weight), embedder
 

@@ -99,7 +99,7 @@ class DocumentIngestor:
                     text=piece,
                     embedding=_dump_vector(vector),
                 )
-                for ordinal, (piece, vector) in enumerate(zip(pieces, vectors))
+                for ordinal, (piece, vector) in enumerate(zip(pieces, vectors, strict=True))
             ]
         )
         session.commit()
